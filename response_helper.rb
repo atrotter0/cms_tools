@@ -11,10 +11,10 @@ def get_response(url)
 end
 
 # Get and return data if response is valid
-def get_data(response_flag, url)
+def get_data(flag, url)
   data = ""
-  response = 0
-  if response_flag == true
+  response = nil
+  if flag == true
     response = RestClient.get(url)
     data = JSON.load response
   end

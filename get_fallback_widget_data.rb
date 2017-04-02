@@ -11,7 +11,7 @@ FALLBACK_WIDGET_SLUGS = [
   "self-storage-search", 
   "multifamily-iui-cards-v2", 
   "multifamily-search-v2"
-].sort.freeze
+].freeze
 
 class LocationPageData
   attr_accessor :client_name, :location_name, :location_urn, :pages, :last_publish_date
@@ -25,11 +25,11 @@ class LocationPageData
   end
 
   def display
-    puts "#{client_name}"
-    puts "#{location_name}"
-    puts "#{location_urn}"
-    puts "#{pages}"
-    puts "#{last_publish_date}"
+    puts "Client: #{client_name}"
+    puts "Location: #{location_name}"
+    puts "Urn: #{location_urn}"
+    puts "Pages: #{pages}"
+    puts "Last Publish Date: #{last_publish_date}"
   end
 
   def add_page(page)
@@ -59,36 +59,27 @@ def gather_cms_info(cms_list, cms_data_holder)
     cms_url = "https://#{cms}.herokuapp.com/g5_ops/config.json"
     puts "Gathering data for #{cms}"
     response = get_response(cms_url)
-    puts "Response => #{response}"
-    json_data = get_data(response, cms_url) if response
-    puts "data => #{json_data}" if json_data.empty?
-    g5_internal = check_g5_internal(json_data) unless json_data.empty?
-    puts "G5 Internal => #{g5_internal}"
-    get_page_info(json_data, cms_data_holder) if g5_internal == false
+    data = get_data(response, cms_url) if response
+    g5_internal = check_g5_internal(data) unless data.empty?
+    get_page_info(data, cms_data_holder) if g5_internal == false
   end
 end
 
-#check for g5_internal
 def check_g5_internal(data)
   g5_internal = data["client"]["g5_internal"]
 end
 
 def get_page_info(data, cms_data_holder)
   client = data["client"]["name"]
-  puts "Client => #{client}"
   first_location = data["locations"].first
-  #puts "First location => #{first_location}"
   if first_location.nil?
-    puts "First location empty"
+    puts "No locations for #{client}!"
     puts ""
   else
     data["locations"].each do |location|
       location_name = location["location"]
-      puts "Location => #{location_name}"
       location_urn = location["urn"]
-      puts "URN => #{location_urn}"
       last_publish_date = Date.parse(location["last_successful_deploy"]) unless location["last_successful_deploy"].nil?
-      #puts "Publish date => #{last_publish_date}"
       location_data = LocationPageData.new(client, location_name, location_urn, last_publish_date)
       location["page_configs"].each do |page|
         page["garden_widget_slugs"].each do |widget_slug|
@@ -97,12 +88,34 @@ def get_page_info(data, cms_data_holder)
           end
         end
       end
-    location_data.remove_last_comma
-    cms_data_holder << location_data
-    puts "Added #{location_name} data to holder!"
-    puts ""
+      if location_data.pages != ""
+        location_data.remove_last_comma
+        cms_data_holder << location_data
+        location_data.display
+        puts "Added data to holder!"
+        puts ""
+      end
     end
   end
+end
+
+def export_to_csv(file_name, cms_data_holder)
+  puts "Exporting CMS data..."
+  csv_headers = ["Client:", "Location Name:", "Location Urn:", "Last Publish Date:", "Pages With Fallback Widgets:"]
+  CSV.open(file_name, "wb") do |csv|
+    csv << csv_headers
+    cms_data_holder.each do |location|
+      csv_row = [
+        location.client_name, 
+        location.location_name, 
+        location.location_urn, 
+        location.last_publish_date, 
+        location.pages
+      ]
+      csv << csv_row
+    end
+  end
+  puts "Data exported!"
 end
 
 # script start
@@ -112,4 +125,5 @@ puts "Starting script..."
 file = "cms-list-test.txt"
 build_cms_list(file, cms_list)
 gather_cms_info(cms_list, cms_data_holder)
-puts "CMS holder => #{cms_data_holder}"
+puts "Location count: #{cms_data_holder.count}"
+export_to_csv("cms_page_data.csv", cms_data_holder)
