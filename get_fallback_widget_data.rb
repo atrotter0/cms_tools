@@ -33,11 +33,7 @@ class LocationPageData
   end
 
   def add_page(page)
-    if @pages
-      @pages += page + ', '
-    else 
-      @pages = page
-    end
+    @pages += page + ', '
   end
 
   def remove_last_comma
