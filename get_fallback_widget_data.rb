@@ -55,14 +55,23 @@ def gather_cms_info(cms_list, cms_data_holder)
     cms_url = "https://#{cms}.herokuapp.com/g5_ops/config.json"
     puts "Gathering data for #{cms}"
     response = get_response(cms_url)
-    data = get_data(response, cms_url) if response
-    g5_internal = check_g5_internal(data) unless data.empty?
-    get_page_info(data, cms_data_holder) if g5_internal == false
+    if response
+      data = get_data(response, cms_url)
+      g5_internal = check_g5_internal(data) unless data.empty?
+      get_page_info(data, cms_data_holder) unless g5_internal == true || g5_internal == nil
+    else
+      next
+    end
   end
 end
 
 def check_g5_internal(data)
-  g5_internal = data["client"]["g5_internal"]
+  g5_internal = nil
+  if data["client"] != nil
+    g5_internal = data["client"]["g5_internal"]
+  else
+    g5_internal
+  end
 end
 
 def get_page_info(data, cms_data_holder)
@@ -118,7 +127,7 @@ end
 cms_list = []
 cms_data_holder = []
 puts "Starting script..."
-file = "cms-list-test.txt"
+file = "cms-list.txt"
 build_cms_list(file, cms_list)
 gather_cms_info(cms_list, cms_data_holder)
 puts "Location count: #{cms_data_holder.count}"
